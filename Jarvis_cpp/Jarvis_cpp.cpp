@@ -2,11 +2,37 @@
 //
 
 #include <iostream>
+#include "secrets.h"
+#include "speechapi_c.h"
+#include <speechapi_cxx_speech_config.h>
+#include <iostream> 
+#include <stdlib.h>
+#include <speechapi_cxx.h>
+
+
+
+
+//azure namespaces
+using namespace std;
+using namespace Microsoft::CognitiveServices::Speech;
+using namespace Microsoft::CognitiveServices::Speech::Audio;
 
 int main()
 {
-    std::cout << "Hello World!\n";
+    std::cout << "initalizing speech config...\n";
+    auto speechConfig = SpeechConfig::FromSubscription(YOUR::KEY, YOUR::REGION);
+    std::cout << "initalizing audio config...\n";
+    auto audioConfig = AudioConfig::FromDefaultMicrophoneInput();
+    std::cout << "initalizing speech recognizer...\n";
+    auto speechRecognizer = SpeechRecognizer::FromConfig(speechConfig, audioConfig);
+
+    cout << "Speak into your microphone." << std::endl;
+    auto result = speechRecognizer->RecognizeOnceAsync().get();
+    cout << "RECOGNIZED: Text=" << result->Text << std::endl;
 }
+
+
+
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
 // Debug program: F5 or Debug > Start Debugging menu

@@ -364,3 +364,5 @@ FodyWeavers.xsd
 
 # hide my api keys
 secrets.h
+openai.hpp
+json.hpp

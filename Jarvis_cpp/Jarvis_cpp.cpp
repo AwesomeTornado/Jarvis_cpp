@@ -7,6 +7,7 @@
 #include <speechapi_cxx_speech_config.h>
 #include <iostream> 
 #include <stdlib.h>
+#include "openai.hpp"
 #include <speechapi_cxx.h>
 
 
@@ -19,16 +20,34 @@ using namespace Microsoft::CognitiveServices::Speech::Audio;
 
 int main()
 {
-    std::cout << "initalizing speech config...\n";
-    auto speechConfig = SpeechConfig::FromSubscription(YOUR::KEY, YOUR::REGION);
-    std::cout << "initalizing audio config...\n";
-    auto audioConfig = AudioConfig::FromDefaultMicrophoneInput();
-    std::cout << "initalizing speech recognizer...\n";
-    auto speechRecognizer = SpeechRecognizer::FromConfig(speechConfig, audioConfig);
+    //std::cout << "initalizing speech config...\n";
+    //auto speechConfig = SpeechConfig::FromSubscription(Azure::Key, Azure::Region);
+    //std::cout << "initalizing audio config...\n";
+    //auto audioConfig = AudioConfig::FromDefaultMicrophoneInput();
+    //std::cout << "initalizing speech recognizer...\n";
+    //auto speechRecognizer = SpeechRecognizer::FromConfig(speechConfig, audioConfig);
 
-    cout << "Speak into your microphone." << std::endl;
-    auto result = speechRecognizer->RecognizeOnceAsync().get();
-    cout << "RECOGNIZED: Text=" << result->Text << std::endl;
+    //cout << "Speak into your microphone." << std::endl;
+    //auto result = speechRecognizer->RecognizeOnceAsync().get();
+    //cout << "RECOGNIZED: Text=" << result->Text << std::endl;
+   
+    //openai::start(); // Will use the api key provided by `OPENAI_API_KEY` environment variable
+    openai::start(OpenAI::Key); // Or you can handle it yourself
+
+    auto completion = openai::completion().create(R"({
+        "model": "text-davinci-003",
+        "prompt": "Say this is a test",
+        "max_tokens": 7,
+        "temperature": 0
+    })"_json); // Using user-defined (raw) string literals
+    std::cout << "Response is:\n" << completion.dump(2) << '\n';
+
+    auto image = openai::image().create({
+        { "prompt", "A cute koala playing the violin"},
+        { "n", 1 },
+        { "size", "512x512" }
+        }); // Using initializer lists
+    std::cout << "Image URL is: " << image["data"][0]["url"] << '\n';
 }
 
 

@@ -9,57 +9,83 @@
 #include <stdlib.h>
 #include "openai.hpp"
 #include <speechapi_cxx.h>
-
-
+#include <sapi.h>
+#include <String>
+#include "nlohmann/json.hpp"
+#include "utf8.h"
 
 
 //azure namespaces
 using namespace std;
 using namespace Microsoft::CognitiveServices::Speech;
 using namespace Microsoft::CognitiveServices::Speech::Audio;
+using json = nlohmann::json;
+
+
 
 int main()
 {
-    //std::cout << "initalizing speech config...\n";
-    //auto speechConfig = SpeechConfig::FromSubscription(Azure::Key, Azure::Region);
-    //std::cout << "initalizing audio config...\n";
-    //auto audioConfig = AudioConfig::FromDefaultMicrophoneInput();
-    //std::cout << "initalizing speech recognizer...\n";
-    //auto speechRecognizer = SpeechRecognizer::FromConfig(speechConfig, audioConfig);
+	std::cout << "initalizing speech config...\n";
+	auto speechConfig = SpeechConfig::FromSubscription(Azure::Key, Azure::Region);
+	std::cout << "initalizing audio config...\n";
+	auto audioConfig = AudioConfig::FromDefaultMicrophoneInput();
+	std::cout << "initalizing speech recognizer...\n";
+	auto speechRecognizer = SpeechRecognizer::FromConfig(speechConfig, audioConfig);
 
-    //cout << "Speak into your microphone." << std::endl;
-    //auto result = speechRecognizer->RecognizeOnceAsync().get();
-    //cout << "RECOGNIZED: Text=" << result->Text << std::endl;
-   
-    //openai::start(); // Will use the api key provided by `OPENAI_API_KEY` environment variable
-    openai::start(OpenAI::Key); // Or you can handle it yourself
+	cout << "Speak into your microphone." << std::endl;
+	auto result = speechRecognizer->RecognizeOnceAsync().get();
+	cout << "RECOGNIZED: Text=" << result->Text << std::endl;
 
-    auto completion = openai::completion().create(R"({
-        "model": "text-davinci-003",
-        "prompt": "Say this is a test",
-        "max_tokens": 7,
-        "temperature": 0
-    })"_json); // Using user-defined (raw) string literals
-    std::cout << "Response is:\n" << completion.dump(2) << '\n';
-
-    auto image = openai::image().create({
-        { "prompt", "A cute koala playing the violin"},
-        { "n", 1 },
-        { "size", "512x512" }
-        }); // Using initializer lists
-    std::cout << "Image URL is: " << image["data"][0]["url"] << '\n';
-}
+	openai::start(OpenAI::Key); // Or you can handle it yourself
 
 
 
+	json request = {
+		{"model", "gpt-3.5-turbo"},
+		{"messages",{
+		{
+			{"role", "system"},
+			{"content", "respond with only working powershell commands. double check your responses to ensure that it is only comprised of VALID and SHORT windows powershell commands. use no backslashes and no quotation marks."}},
+		{
+			{"role", "user"},
+			{"content",result->Text.c_str()}
+		}
+		}
+		},
+		{"temperature", 1},
+		{"max_tokens", 80},
+		{"top_p", 1},
+		{"frequency_penalty", 0},
+		{"presence_penalty", 0}
+	};
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
 
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
+	auto completion = openai::chat().create(request);
+	char* response = (char*)completion.at("choices").at(0).at("message").at("content").dump(0).c_str();
+	std::cout << "Response is:\n" << response << '\n';
+	string response2 = response;
+
+
+	ISpVoice* pVoice = NULL;
+	HRESULT hr;
+	auto a = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	if (FAILED(a))
+	{
+		cout << "ERROR 404 FAILED INITIALIZING COM\n";
+		exit(1);
+	}
+	HRESULT CoInitializeEx(LPVOID pvReserved, DWORD dwCoInit);
+	hr = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, (void**)&pVoice);
+
+	if (SUCCEEDED(hr))
+	{
+		vector<unsigned short> utf16line;
+		string::iterator end_it = utf8::find_invalid(response2.begin(), response2.end());
+		utf8::utf8to16(response2.begin(), end_it, back_inserter(utf16line));
+		wstring wstr = (wchar_t*)utf16line.data();
+		hr = pVoice->Speak(wstr.c_str(), 0, NULL);
+		pVoice->Release();
+		pVoice = NULL;
+	}
+	return 0;
+	}
